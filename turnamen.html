@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Turnamen - UKM Catur</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* =========================================
+           STYLE KHUSUS: TAMPILAN CHESS MANAGER
+           (Tertanam langsung agar aman)
+           ========================================= */
+
+        /* 1. Container Kartu menjadi Grid 3 Kolom */
+        .match-card {
+            display: grid;
+            /* Kolom: [Pemain Kiri] [Skor Tengah] [Pemain Kanan] */
+            grid-template-columns: 1fr 140px 1fr; 
+            gap: 15px;
+            align-items: center;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 5px solid #bdc3c7; /* Garis default abu-abu */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+            transition: border-left-color 0.3s ease;
+        }
+
+        /* 2. Styling Nama Pemain */
+        .player-side {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow: hidden; 
+            white-space: nowrap;
+        }
+
+        .side-left {
+            justify-content: flex-end; /* Rata Kanan */
+            text-align: right;
+        }
+
+        .side-right {
+            justify-content: flex-start; /* Rata Kiri */
+            text-align: left;
+        }
+
+        .p-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Indikator Warna Bidak */
+        .dot-piece { font-size: 1rem; opacity: 0.9; }
+
+        /* 3. Styling Input Skor di Tengah */
+        .match-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hasil-match {
+            width: 100%;
+            padding: 8px 5px;
+            text-align: center;
+            font-weight: bold;
+            border: 2px solid #dfe6e9;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+            color: #333;
+            cursor: pointer;
+            font-size: 1rem;
+            appearance: none; 
+            -webkit-appearance: none; /* Hilangkan panah default browser */
+            transition: 0.2s;
+        }
+
+        .hasil-match:hover { border-color: #f1c40f; }
+        .hasil-match:focus { outline: none; border-color: #27ae60; background: #fff; }
+
+        /* Style Babak */
+        .ronde-header {
+            background:#34495e; 
+            color:white; 
+            padding:8px 15px; 
+            margin-top:25px; 
+            margin-bottom: 10px;
+            font-weight:bold; 
+            border-radius:6px; 
+            font-size:0.9rem; 
+            text-transform:uppercase; 
+            letter-spacing:1px;
+            text-align: center;
+        }
+
+        /* Responsif HP */
+        @media (max-width: 600px) {
+            .match-card {
+                grid-template-columns: 1fr; /* Tumpuk ke bawah */
+                text-align: center;
+                gap: 8px;
+                padding: 15px;
+            }
+            .side-left { justify-content: center; text-align: center; flex-direction: column-reverse; gap: 2px;}
+            .side-right { justify-content: center; text-align: center; flex-direction: column; gap: 2px; }
+            .match-center { width: 100%; margin: 5px 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+    <div class="logo-container">
+        <img src="logo.png" alt="Logo" class="logo-img"> 
+        <span class="logo-text">UINSA Chess Club</span>
+    </div>
+
+    <ul class="menu">
+        <li><a href="index.html">Beranda</a></li>
+        <li><a href="rating.html">Top Rating</a></li>
+        <li><a href="turnamen.html">Turnamen</a></li>
+        <li><a href="pemain.html">Data Pemain</a></li>
+        <li><a href="arsip.html">Arsip</a></li>
+    </ul>
+</nav>
+
+    <div class="container">
+        <h1>Manajer Turnamen</h1>
+        
+        <div id="adminControls">
+            <div class="input-group">
+                <input type="text" id="namaPemain" list="saranNama" placeholder="Ketik nama peserta (misal: Magnus)..." autocomplete="off">
+                <datalist id="saranNama"></datalist>
+                <button class="btn-add" onclick="tambahPemain()">+ Tambah</button>
+            </div>
+            
+            <h3>Daftar Peserta (<span id="jumlahPeserta">0</span>)</h3>
+            <ul id="listPemain"></ul>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+
+            <div style="margin-bottom: 10px;">
+                <label style="font-weight:bold; color:var(--primary-color);">Nama Turnamen:</label>
+                <input type="text" id="judulTurnamen" placeholder="Contoh: Piala Rektor 2026" style="width:100%; margin-top:5px;">
+            </div>
+
+            <button class="btn-generate" onclick="buatJadwal()">⚡ BUAT JADWAL & MULAI</button>
+            <hr style="margin: 30px 0;">
+        </div>
+
+        <div id="viewerMessage" style="display:none; text-align:center; padding:20px; background:#f8f9fa; border-radius:10px; margin-bottom:20px; border-left: 5px solid #f1c40f;">
+            <h3>👁️ Mode Penonton</h3>
+            <p>Anda sedang melihat jalannya turnamen sebagai tamu.</p>
+        </div>
+
+        <div id="areaTurnamen" style="display:none;">
+            <h2 style="text-align:center; color:var(--accent-color); text-transform:uppercase;" id="displayJudul"></h2>
+            
+            <div id="wadahJadwal"></div>
+
+            <button id="btnUpdateKlasemen" class="btn-update" onclick="hitungKlasemen()">🏆 UPDATE KLASEMEN SEMENTARA</button>
+
+            <h2>📊 Klasemen Sementara</h2>
+            <table id="tabelKlasemen">
+                <thead>
+                    <tr>
+                        <th>Peringkat</th>
+                        <th>Nama Pemain</th>
+                        <th>Poin</th>
+                    </tr>
+                </thead>
+                <tbody id="isiKlasemen"></tbody>
+            </table>
+
+            <hr style="margin-top: 40px;">
+
+            <div id="adminActions">
+                <a href="live.html" target="_blank" style="display:block; text-align:center; background:#8e44ad; color:white; padding:15px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:20px; box-shadow: 0 4px 10px rgba(142, 68, 173, 0.4);">
+                    📢 Buka Layar Penonton / Download Gambar
+                </a>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-add" style="flex: 2; background: var(--primary-color);" onclick="arsipkanTurnamen()">
+                        💾 Selesai, Hitung Rating & Arsip
+                    </button>
+                    <button class="btn-danger" style="flex: 1; margin: 0;" onclick="resetPaksa()">
+                        🗑️ Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KEYS DATABASE ---
+        const DB_PEMAIN_KEY = 'ukm_master_pemain'; 
+        const DB_ARSIP_KEY = 'ukm_arsip_turnamen'; 
+        const SESSION_PESERTA = 'ukm_sesi_peserta';
+        const SESSION_JADWAL = 'ukm_sesi_jadwal';
+        const SESSION_SKOR = 'ukm_sesi_skor';
+        const SESSION_STATUS = 'ukm_status_aktif';
+        const SESSION_JUDUL = 'ukm_judul_turnamen';
+
+        // --- CEK LOGIN ---
+        const ROLE = localStorage.getItem('ukm_role');
+        if (!ROLE) window.location.href = 'login.html';
+
+        let databasePemain = JSON.parse(localStorage.getItem(DB_PEMAIN_KEY)) || [];
+        let pesertaTurnamen = JSON.parse(localStorage.getItem(SESSION_PESERTA)) || [];
+
+        // --- WINDOW LOAD ---
+        window.onload = function() {
+            if (ROLE !== 'admin') {
+                document.getElementById('adminControls').style.display = 'none';
+                document.getElementById('adminActions').style.display = 'none';
+                document.getElementById('btnUpdateKlasemen').style.display = 'none';
+                document.getElementById('viewerMessage').style.display = 'block';
+            } else {
+                updateSaranNama();
+                renderList();
+            }
+
+            if (localStorage.getItem(SESSION_STATUS) === 'yes') {
+                restoreTurnamen();
+            } else if (ROLE !== 'admin') {
+                document.getElementById('viewerMessage').innerHTML += "<p style='color:red; font-weight:bold; margin-top:10px;'>Belum ada turnamen yang dimulai oleh Admin.</p>";
+            }
+        };
+
+        // --- FUNGSI ADMIN: INPUT DATA ---
+        function updateSaranNama() {
+            let datalist = document.getElementById("saranNama");
+            datalist.innerHTML = "";
+            let tempDb = [...databasePemain]; 
+            tempDb.sort((a, b) => a.nama.localeCompare(b.nama));
+            tempDb.forEach(item => {
+                let option = document.createElement("option");
+                option.value = item.nama; 
+                option.label = `Rating: ${item.rating}`; 
+                datalist.appendChild(option);
+            });
+        }
+
+        function tambahPemain() {
+            let input = document.getElementById("namaPemain");
+            let namaRaw = input.value.trim();
+            if (namaRaw === "") return;
+            let nama = namaRaw.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+
+            if(pesertaTurnamen.includes(nama)){ alert("Pemain sudah ada!"); return; }
+
+            pesertaTurnamen.push(nama);
+            localStorage.setItem(SESSION_PESERTA, JSON.stringify(pesertaTurnamen));
+            
+            let dataPemain = databasePemain.find(p => p.nama === nama);
+            if (!dataPemain) {
+                databasePemain.push({ nama: nama, rating: 1000 });
+                localStorage.setItem(DB_PEMAIN_KEY, JSON.stringify(databasePemain));
+                updateSaranNama();
+            }
+            renderList();
+            input.value = ""; input.focus();
+        }
+
+        function renderList() {
+            let list = document.getElementById("listPemain");
+            list.innerHTML = "";
+            pesertaTurnamen.forEach((p, i) => {
+                list.innerHTML += `<li>${p} <span style='color:var(--danger-color); cursor:pointer; margin-left:10px;' onclick='hapusPemain(${i})'>✕</span></li>`;
+            });
+            document.getElementById("jumlahPeserta").innerText = pesertaTurnamen.length;
+        }
+
+        function hapusPemain(index) {
+            if(localStorage.getItem(SESSION_STATUS) === 'yes'){
+                if(!confirm("Hapus pemain saat turnamen jalan akan merusak jadwal!")) return;
+            }
+            pesertaTurnamen.splice(index, 1);
+            localStorage.setItem(SESSION_PESERTA, JSON.stringify(pesertaTurnamen));
+            renderList();
+        }
+
+        // --- FUNGSI UTAMA: BUAT JADWAL (MODIFIKASI TAMPILAN) ---
+        function buatJadwal() {
+            if (pesertaTurnamen.length < 3) { alert("Minimal 3 pemain!"); return; }
+            let judulInput = document.getElementById("judulTurnamen").value.trim();
+            if (judulInput === "") { alert("Isi Nama Turnamen dulu!"); return; }
+
+            localStorage.setItem(SESSION_JUDUL, judulInput);
+            localStorage.setItem(SESSION_STATUS, 'yes');
+            document.getElementById("displayJudul").innerText = judulInput;
+            document.getElementById("areaTurnamen").style.display = "block";
+            
+            let container = document.getElementById("wadahJadwal");
+            container.innerHTML = "";
+            let tempPeserta = [...pesertaTurnamen];
+            if (tempPeserta.length % 2 !== 0) tempPeserta.push("BYE");
+
+            let totalRonde = tempPeserta.length - 1;
+            let setengah = tempPeserta.length / 2;
+
+            for (let r = 1; r <= totalRonde; r++) {
+                let htmlRonde = `<div class="ronde-header">Babak ${r}</div>`;
+                
+                for (let i = 0; i < setengah; i++) {
+                    let p1 = tempPeserta[i];
+                    let p2 = tempPeserta[tempPeserta.length - 1 - i];
+                    
+                    if (p1 !== "BYE" && p2 !== "BYE") {
+                        // --- LAYOUT MIRIP CHESS MANAGER ---
+                        htmlRonde += `
+                        <div class="match-card">
+                            <div class="player-side side-left">
+                                <span class="p-name">${p1}</span> 
+                                <span class="dot-piece" title="Putih">⚪</span>
+                            </div>
+
+                            <div class="match-center">
+                                <select class="hasil-match" data-white="${p1}" data-black="${p2}" onchange="simpanSkorOtomatis(this)">
+                                    <option value="belum" style="color:#aaa;">vs</option>
+                                    <option value="1-0">1 - 0</option>
+                                    <option value="0-1">0 - 1</option>
+                                    <option value="0.5-0.5">½ - ½</option>
+                                </select>
+                            </div>
+
+                            <div class="player-side side-right">
+                                <span class="dot-piece" title="Hitam">⚫</span>
+                                <span class="p-name">${p2}</span>
+                            </div>
+                        </div>`;
+                    }
+                }
+                container.innerHTML += htmlRonde;
+                tempPeserta.splice(1, 0, tempPeserta.pop()); 
+            }
+            localStorage.setItem(SESSION_JADWAL, container.innerHTML);
+            hitungKlasemen();
+        }
+
+        // --- MANAGEMEN SKOR (UPDATE WARNA & SAVE) ---
+        function simpanSkorOtomatis(el) {
+            if (ROLE !== 'admin') return; 
+
+            // Efek UI: Ganti warna border kiri jika sudah diisi
+            if(el) {
+                let card = el.closest('.match-card');
+                if(el.value !== 'belum') {
+                    card.style.borderLeftColor = '#27ae60'; // Hijau
+                    el.style.fontWeight = '900';
+                    el.style.color = '#2c3e50';
+                } else {
+                    card.style.borderLeftColor = '#bdc3c7'; // Abu
+                    el.style.fontWeight = 'normal';
+                }
+            }
+
+            let semuaSelect = document.querySelectorAll('.hasil-match');
+            let dataSkor = [];
+            semuaSelect.forEach(sel => dataSkor.push(sel.value));
+            localStorage.setItem(SESSION_SKOR, JSON.stringify(dataSkor));
+            hitungKlasemen();
+        }
+
+        function restoreTurnamen() {
+            document.getElementById("areaTurnamen").style.display = "block";
+            
+            let judulSimpan = localStorage.getItem(SESSION_JUDUL) || "Turnamen Tanpa Nama";
+            document.getElementById("displayJudul").innerText = judulSimpan;
+            document.getElementById("judulTurnamen").value = judulSimpan;
+
+            let htmlDisimpan = localStorage.getItem(SESSION_JADWAL);
+            if(htmlDisimpan) document.getElementById("wadahJadwal").innerHTML = htmlDisimpan;
+
+            let skorDisimpan = JSON.parse(localStorage.getItem(SESSION_SKOR)) || [];
+            let semuaSelect = document.querySelectorAll('.hasil-match');
+            
+            semuaSelect.forEach((sel, index) => {
+                if(skorDisimpan[index]) {
+                    sel.value = skorDisimpan[index];
+                    // Update tampilan warna saat restore
+                    if(sel.value !== 'belum') {
+                        let card = sel.closest('.match-card');
+                        if(card) card.style.borderLeftColor = '#27ae60';
+                        sel.style.fontWeight = '900';
+                    }
+                }
+                
+                if (ROLE !== 'admin') {
+                    sel.disabled = true; 
+                    sel.style.backgroundColor = "#eee";
+                    sel.style.border = "none";
+                }
+            });
+            hitungKlasemen();
+        }
+
+        function hitungKlasemen() {
+            let skor = {};
+            pesertaTurnamen.forEach(nama => skor[nama] = 0);
+            let semuaMatch = document.querySelectorAll('.hasil-match');
+            semuaMatch.forEach(match => {
+                let pPutih = match.getAttribute('data-white');
+                let pHitam = match.getAttribute('data-black');
+                let hasil = match.value;
+                if (hasil === "1-0") skor[pPutih] += 1;
+                else if (hasil === "0-1") skor[pHitam] += 1;
+                else if (hasil === "0.5-0.5") { skor[pPutih] += 0.5; skor[pHitam] += 0.5; }
+            });
+            let urutanKlasemen = Object.keys(skor).map(nama => { return { nama: nama, poin: skor[nama] }; });
+            urutanKlasemen.sort((a, b) => b.poin - a.poin);
+
+            let tabelBody = document.getElementById("isiKlasemen");
+            tabelBody.innerHTML = "";
+            urutanKlasemen.forEach((data, index) => {
+                let kelasWarna = (index === 0 && data.poin > 0) ? "class='peringkat-1'" : "";
+                let medali = (index === 0 && data.poin > 0) ? "👑" : "";
+                tabelBody.innerHTML += `<tr ${kelasWarna}><td>${index + 1} ${medali}</td><td>${data.nama}</td><td>${data.poin}</td></tr>`;
+            });
+            return urutanKlasemen; 
+        }
+
+        // --- ELO RATING SYSTEM ---
+        function hitungRatingElo(ratingA, ratingB, skorSebenarnya) {
+            const K = 32; 
+            let expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+            return Math.round(K * (skorSebenarnya - expectedA));
+        }
+
+        // --- ARSIP & RESET (ADMIN ONLY) ---
+        function arsipkanTurnamen() {
+            if(!confirm("Turnamen Selesai? Rating akan diupdate dan disimpan.")) return;
+
+            let ratingTracker = {}; 
+            pesertaTurnamen.forEach(nama => ratingTracker[nama] = 0);
+
+            let semuaMatch = document.querySelectorAll('.hasil-match');
+            let dbUpdate = [...databasePemain]; 
+
+            semuaMatch.forEach(match => {
+                let p1Name = match.getAttribute('data-white');
+                let p2Name = match.getAttribute('data-black');
+                let hasil = match.value;
+                if (hasil === 'belum') return;
+
+                let p1 = dbUpdate.find(p => p.nama === p1Name);
+                let p2 = dbUpdate.find(p => p.nama === p2Name);
+
+                if (p1 && p2) {
+                    let s1 = (hasil === "1-0") ? 1 : (hasil === "0.5-0.5" ? 0.5 : 0);
+                    let u1 = hitungRatingElo(p1.rating, p2.rating, s1);
+                    let u2 = hitungRatingElo(p2.rating, p1.rating, 1 - s1);
+
+                    p1.rating += u1; p2.rating += u2;
+                    ratingTracker[p1Name] += u1; ratingTracker[p2Name] += u2;
+                }
+            });
+
+            localStorage.setItem(DB_PEMAIN_KEY, JSON.stringify(dbUpdate));
+
+            let hasilAkhir = hitungKlasemen();
+            hasilAkhir.forEach(pemain => {
+                let dMaster = dbUpdate.find(p => p.nama === pemain.nama);
+                pemain.rating_sekarang = dMaster ? dMaster.rating : 1000;
+                pemain.rating_ubah = ratingTracker[pemain.nama] || 0;
+            });
+
+            let dataArsipBaru = {
+                id: Date.now(),
+                nama_turnamen: localStorage.getItem(SESSION_JUDUL) || "Turnamen Tanpa Nama",
+                tanggal: new Date().toLocaleDateString('id-ID'),
+                jam: new Date().toLocaleTimeString('id-ID'),
+                jumlah_peserta: pesertaTurnamen.length,
+                detail_klasemen: hasilAkhir 
+            };
+
+            let databaseArsip = JSON.parse(localStorage.getItem(DB_ARSIP_KEY)) || [];
+            databaseArsip.unshift(dataArsipBaru);
+            localStorage.setItem(DB_ARSIP_KEY, JSON.stringify(databaseArsip));
+
+            bersihkanSesi();
+            alert("Berhasil Diarsipkan!");
+            window.location.href = "arsip.html";
+        }
+
+        function resetPaksa() {
+            if(confirm("Hapus data turnamen ini?")) {
+                bersihkanSesi();
+                location.reload();
+            }
+        }
+
+        function bersihkanSesi() {
+            localStorage.removeItem(SESSION_PESERTA);
+            localStorage.removeItem(SESSION_JADWAL);
+            localStorage.removeItem(SESSION_SKOR);
+            localStorage.removeItem(SESSION_STATUS);
+            localStorage.removeItem(SESSION_JUDUL);
+        }
+    </script>
+</body>
+</html>

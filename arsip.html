@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat Turnamen - UKM Catur</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .grid-arsip { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
+        .card-history { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-top: 5px solid var(--primary-color); transition: transform 0.2s; position: relative; }
+        .card-history:hover { transform: translateY(-5px); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        .card-header h3 { margin: 0; color: var(--primary-color); font-size: 1.2rem; text-transform: capitalize; max-width: 85%; }
+        .btn-trash-icon { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: #e74c3c; opacity: 0.3; transition: all 0.2s; padding: 0; }
+        .btn-trash-icon:hover { opacity: 1; transform: scale(1.2); }
+        .tanggal-arsip { color: #95a5a6; font-size: 0.85rem; margin-bottom: 15px; display: block; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .btn-detail { display: block; width: 100%; padding: 10px; margin-top: 15px; background: var(--accent-color); color: white; text-align: center; border-radius: 6px; border: none; cursor: pointer; }
+        
+        /* MODAL STYLE */
+        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 30px; border-radius: 10px; width: 95%; max-width: 700px; max-height: 80vh; overflow-y: auto; position: relative; animation: muncul 0.3s ease-out; }
+        @keyframes muncul { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #aaa; }
+        .close-btn:hover { color: red; }
+
+        /* Badge Rating */
+        .badge-naik { color: #27ae60; font-weight: bold; background: #e8f8f5; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+        .badge-turun { color: #c0392b; font-weight: bold; background: #fdedec; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+        .badge-tetap { color: #7f8c8d; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+    <div class="logo-container">
+        <img src="logo.png" alt="Logo" class="logo-img"> 
+        <span class="logo-text">UINSA Chess CLub</span>
+    </div>
+
+    <ul class="menu">
+        <li><a href="index.html">Beranda</a></li>
+        <li><a href="rating.html">Top Rating</a></li>
+        <li><a href="turnamen.html">Turnamen</a></li>
+        <li><a href="pemain.html">Data Pemain</a></li>
+        <li><a href="arsip.html">Arsip</a></li>
+    </ul>
+</nav>
+
+    <div class="container">
+        <h1>📚 Perpustakaan Turnamen</h1>
+        <p style="text-align: center; color: #666;">Riwayat pertandingan dan jejak rating para pemain.</p>
+
+        <div id="wadahArsip" class="grid-arsip"></div>
+        
+        <hr style="margin-top: 50px; border: 0; border-top: 1px solid #ddd;">
+        <button onclick="hapusSemuaArsip()" style="margin-top:20px; background:#bdc3c7; color:#333; padding:10px 20px; border-radius:5px; border:none; cursor:pointer; font-size:0.9rem;">⚠️ Hapus Seluruh Riwayat</button>
+    </div>
+
+    <div id="modalDetail" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="tutupModal()">&times;</span>
+            <h2 id="judulModal" style="color:var(--primary-color); margin-bottom:5px;"></h2>
+            <p id="infoModal" style="color:#777; margin-bottom:20px;"></p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nama Pemain</th>
+                        <th>Total Poin</th>
+                        <th>Rating Update (ELO)</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelDetail"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const DB_ARSIP_KEY = 'ukm_arsip_turnamen';
+        let databaseArsip = JSON.parse(localStorage.getItem(DB_ARSIP_KEY)) || [];
+
+        window.onload = function() { renderArsip(); };
+
+        function renderArsip() {
+            let container = document.getElementById("wadahArsip");
+            container.innerHTML = "";
+
+            if (databaseArsip.length === 0) {
+                container.innerHTML = "<p style='text-align:center; width:100%; color:#aaa;'>Belum ada turnamen yang diarsipkan.</p>";
+                return;
+            }
+
+            databaseArsip.forEach((data, index) => {
+                let juara1 = data.detail_klasemen[0]?.nama || "Tidak ada";
+                let namaT = data.nama_turnamen || "Turnamen Tanpa Nama";
+
+                container.innerHTML += `
+                <div class="card-history">
+                    <div class="card-header">
+                        <h3>🏆 ${namaT}</h3>
+                        <button class="btn-trash-icon" onclick="hapusSatuArsip(${index})" title="Hapus Turnamen Ini">🗑️</button>
+                    </div>
+                    <span class="tanggal-arsip">📅 ${data.tanggal} • 🕒 ${data.jam}</span>
+                    <p>👥 Peserta: ${data.jumlah_peserta} Orang</p>
+                    <p>🥇 Pemenang: <b>${juara1}</b></p>
+                    <button class="btn-detail" onclick="bukaModal(${index})">👁️ Lihat Hasil & Rating</button>
+                </div>`;
+            });
+        }
+
+        function bukaModal(index) {
+            let data = databaseArsip[index];
+            let modal = document.getElementById("modalDetail");
+            let tabel = document.getElementById("tabelDetail");
+            
+            document.getElementById("judulModal").innerText = data.nama_turnamen || "Detail Turnamen";
+            document.getElementById("infoModal").innerText = `Diselenggarakan pada ${data.tanggal} | ${data.jumlah_peserta} Peserta`;
+
+            tabel.innerHTML = "";
+            data.detail_klasemen.forEach((pemain, i) => {
+                let medali = "";
+                let kelas = "";
+                if (i === 0) { medali = "🥇"; kelas="style='background:#fff9c4; font-weight:bold;'"; }
+                else if (i === 1) medali = "🥈";
+                else if (i === 2) medali = "🥉";
+
+                // LOGIKA TAMPILAN RATING
+                // Cek apakah data rating ada? (Untuk kompatibilitas arsip lama)
+                let ratingDisplay = "-";
+                let perubahan = pemain.rating_ubah || 0;
+                let ratingAkhir = pemain.rating_sekarang || "-";
+
+                if (ratingAkhir !== "-") {
+                    if (perubahan > 0) {
+                        ratingDisplay = `${ratingAkhir} <span class="badge-naik">(+${perubahan})</span>`;
+                    } else if (perubahan < 0) {
+                        ratingDisplay = `${ratingAkhir} <span class="badge-turun">(${perubahan})</span>`;
+                    } else {
+                        ratingDisplay = `${ratingAkhir} <span class="badge-tetap">(=)</span>`;
+                    }
+                }
+
+                tabel.innerHTML += `
+                <tr ${kelas}>
+                    <td>${i + 1} ${medali}</td>
+                    <td>${pemain.nama}</td>
+                    <td>${pemain.poin}</td>
+                    <td>${ratingDisplay}</td>
+                </tr>`;
+            });
+            modal.style.display = "flex";
+        }
+
+        function tutupModal() { document.getElementById("modalDetail").style.display = "none"; }
+        window.onclick = function(event) { if (event.target == document.getElementById("modalDetail")) tutupModal(); }
+
+        function hapusSatuArsip(index) {
+            if(confirm(`Yakin hapus arsip ini? Data tidak bisa kembali.`)) {
+                databaseArsip.splice(index, 1);
+                localStorage.setItem(DB_ARSIP_KEY, JSON.stringify(databaseArsip));
+                renderArsip();
+            }
+        }
+
+        function hapusSemuaArsip() {
+            if(confirm("AWAS! Hapus SEMUA riwayat turnamen?")) {
+                localStorage.removeItem(DB_ARSIP_KEY);
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

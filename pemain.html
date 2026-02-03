@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Pemain</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .rating-badge { background: #2c3e50; color: white; padding: 5px 10px; border-radius: 15px; font-weight: bold; font-size: 0.9rem; }
+        .top-player { background-color: #fff9c4 !important; border-left: 5px solid #f1c40f; }
+        .form-box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; display: flex; gap: 10px; align-items: end; }
+        .form-group { flex: 1; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--primary-color); }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; }
+        .btn-sm-delete { background: #ff7675; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .btn-sm-delete:hover { background: #d63031; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+    <div class="logo-container">
+        <img src="logo.png" alt="Logo" class="logo-img"> 
+        <span class="logo-text">UINSA Chess Club</span>
+    </div>
+
+    <ul class="menu">
+        <li><a href="index.html">Beranda</a></li>
+        <li><a href="rating.html">Top Rating</a></li>
+        <li><a href="turnamen.html">Turnamen</a></li>
+        <li><a href="pemain.html">Data Pemain</a></li>
+        <li><a href="arsip.html">Arsip</a></li>
+    </ul>
+</nav>
+
+    <div class="container">
+        <h1>👥 Database Anggota</h1>
+        <p style="text-align:center; color:#666;">Data atlet dan rating resmi.</p>
+
+        <div id="adminPanel" class="form-box">
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="inputNama" placeholder="Nama baru...">
+            </div>
+            <div class="form-group" style="max-width: 150px;">
+                <label>Rating Awal</label>
+                <input type="number" id="inputRating" value="1000">
+            </div>
+            <button class="btn-add" onclick="tambahPemainBaru()" style="height: 46px;">+ Simpan</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th style="text-align:left; padding-left:20px;">Nama Pemain</th>
+                    <th>Elo Rating</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tabelPemain"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const MASTER_KEY = 'ukm_master_pemain';
+        const ROLE = localStorage.getItem('ukm_role');
+        if (!ROLE) window.location.href = 'login.html';
+
+        // --- PROTEKSI HALAMAN ---
+        // Jika Tamu, Sembunyikan Form Input
+        if (ROLE !== 'admin') {
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+
+        let masterPemain = JSON.parse(localStorage.getItem(MASTER_KEY)) || [];
+
+        window.onload = function() { renderTabel(); };
+
+        function tambahPemainBaru() {
+            let nama = document.getElementById("inputNama").value.trim();
+            nama = nama.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            let rating = parseInt(document.getElementById("inputRating").value);
+
+            if (nama === "" || isNaN(rating)) return alert("Data tidak lengkap!");
+            if (masterPemain.find(p => p.nama === nama)) return alert("Nama sudah ada!");
+
+            masterPemain.push({ nama: nama, rating: rating });
+            simpanDanRender();
+            document.getElementById("inputNama").value = "";
+        }
+
+        function hapusPemain(index) {
+            if (ROLE !== 'admin') return alert("Hanya Admin yang boleh menghapus!");
+            if(confirm("Yakin hapus pemain ini?")) {
+                masterPemain.splice(index, 1);
+                simpanDanRender();
+            }
+        }
+
+        function simpanDanRender() {
+            masterPemain.sort((a, b) => b.rating - a.rating);
+            localStorage.setItem(MASTER_KEY, JSON.stringify(masterPemain));
+            renderTabel();
+        }
+
+        function renderTabel() {
+            let tbody = document.getElementById("tabelPemain");
+            tbody.innerHTML = "";
+            if (masterPemain.length === 0) { tbody.innerHTML = "<tr><td colspan='4' style='padding:20px; color:#999;'>Belum ada data.</td></tr>"; return; }
+
+            masterPemain.forEach((pemain, index) => {
+                let medali = ""; let kelas = "";
+                if(index === 0) { medali = "🥇"; kelas="top-player"; }
+                else if(index === 1) medali = "🥈";
+                else if(index === 2) medali = "🥉";
+
+                // Tombol Hapus hanya muncul kalau Admin
+                let tombolHapus = (ROLE === 'admin') 
+                    ? `<button class="btn-sm-delete" onclick="hapusPemain(${index})">Hapus</button>` 
+                    : `<span style="color:#ccc; font-size:0.8rem;">-</span>`;
+
+                tbody.innerHTML += `
+                <tr class="${kelas}">
+                    <td>${index + 1} ${medali}</td>
+                    <td style="text-align:left; padding-left:20px; font-weight:600;">${pemain.nama}</td>
+                    <td><span class="rating-badge">${pemain.rating}</span></td>
+                    <td>${tombolHapus}</td>
+                </tr>`;
+            });
+        }
+    </script>
+</body>
+</html>

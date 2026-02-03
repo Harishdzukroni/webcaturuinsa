@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klasemen Rating ELO - UKM Catur</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Tampilan Khusus Halaman Rating */
+        .header-rating {
+            text-align: center; margin-bottom: 40px;
+        }
+        .header-rating h1 { margin-bottom: 5px; color: var(--primary-color); }
+        .header-rating p { color: #7f8c8d; }
+
+        /* Kotak Pencarian */
+        .search-box {
+            position: relative; max-width: 400px; margin: 0 auto 30px auto;
+        }
+        .search-box input {
+            width: 100%; padding: 15px 20px; border-radius: 30px;
+            border: 2px solid #ddd; outline: none; transition: all 0.3s;
+            font-family: inherit;
+        }
+        .search-box input:focus { border-color: var(--accent-color); box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
+
+        /* Tabel Rating Keren */
+        .rating-table {
+            width: 100%; border-collapse: separate; border-spacing: 0 10px;
+        }
+        .rating-table thead th {
+            border: none; color: #95a5a6; font-weight: 600; text-transform: uppercase;
+            font-size: 0.85rem; padding: 10px 20px;
+        }
+        .rating-table tbody tr {
+            background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            transition: transform 0.2s;
+        }
+        .rating-table tbody tr:hover { transform: scale(1.01); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .rating-table td { padding: 20px; vertical-align: middle; }
+        
+        /* Sudut membulat untuk baris */
+        .rating-table td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+        .rating-table td:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+
+        /* Angka Peringkat */
+        .rank-circle {
+            width: 35px; height: 35px; background: #ecf0f1; color: #7f8c8d;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; margin: 0 auto;
+        }
+
+        /* Warna Top 3 */
+        .rank-1 .rank-circle { background: #f1c40f; color: white; box-shadow: 0 0 10px #f1c40f; } /* Emas */
+        .rank-2 .rank-circle { background: #95a5a6; color: white; } /* Perak */
+        .rank-3 .rank-circle { background: #cd6133; color: white; } /* Perunggu */
+
+        /* Badge Tier (Pangkat) */
+        .tier-badge {
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; 
+            text-transform: uppercase; font-weight: bold; letter-spacing: 1px;
+        }
+        .tier-gm { background: #8e44ad; color: white; } /* Grandmaster (>1200) */
+        .tier-master { background: #e74c3c; color: white; } /* Master (>1100) */
+        .tier-elite { background: #3498db; color: white; } /* Elite (>1000) */
+        .tier-novice { background: #bdc3c7; color: white; } /* Novice (<=1000) */
+
+        /* Angka Rating Besar */
+        .rating-number {
+            font-size: 1.2rem; font-weight: bold; color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+    <div class="logo-container">
+        <img src="logo.png" alt="Logo" class="logo-img"> 
+        <span class="logo-text">UINSA Chess Club</span>
+    </div>
+
+    <ul class="menu">
+        <li><a href="index.html">Beranda</a></li>
+        <li><a href="rating.html">Top Rating</a></li>
+        <li><a href="turnamen.html">Turnamen</a></li>
+        <li><a href="pemain.html">Data Pemain</a></li>
+        <li><a href="arsip.html">Arsip</a></li>
+    </ul>
+</nav>
+
+    <div class="container">
+        
+        <div class="header-rating">
+            <h1>🏆 Leaderboard UKM</h1>
+            <p>Peringkat resmi berdasarkan sistem ELO Rating</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="inputCari" onkeyup="cariPemain()" placeholder="🔍 Cari nama pemain...">
+        </div>
+
+        <table class="rating-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px; text-align:center;">#</th>
+                    <th>Nama Pemain</th>
+                    <th>Kategori</th>
+                    <th style="text-align:right;">ELO Rating</th>
+                </tr>
+            </thead>
+            <tbody id="tabelRating">
+                </tbody>
+        </table>
+
+        <p id="pesanKosong" style="text-align:center; color:#999; display:none; margin-top:30px;">
+            Belum ada data pemain. Silakan tambah di menu 'Data Pemain'.
+        </p>
+
+    </div>
+
+    <script>
+        // Kunci Database yang SAMA dengan halaman lainnya
+        const DB_PEMAIN_KEY = 'ukm_master_pemain'; 
+        
+        // Ambil data
+        let masterPemain = JSON.parse(localStorage.getItem(DB_PEMAIN_KEY)) || [];
+
+        window.onload = function() {
+            renderRating(masterPemain);
+        };
+
+        // Fungsi Menampilkan Tabel
+        function renderRating(data) {
+            let tbody = document.getElementById("tabelRating");
+            let pesan = document.getElementById("pesanKosong");
+            
+            tbody.innerHTML = "";
+
+            if (data.length === 0) {
+                pesan.style.display = "block";
+                return;
+            } else {
+                pesan.style.display = "none";
+            }
+
+            // Urutkan dari Rating TERTINGGI ke TERENDAH
+            data.sort((a, b) => b.rating - a.rating);
+
+            data.forEach((pemain, index) => {
+                let peringkat = index + 1;
+                let kelasRank = "";
+                let ikon = "";
+
+                // Tentukan Warna Peringkat 1, 2, 3
+                if (peringkat === 1) { kelasRank = "rank-1"; ikon = "👑"; }
+                else if (peringkat === 2) { kelasRank = "rank-2"; }
+                else if (peringkat === 3) { kelasRank = "rank-3"; }
+
+                // Tentukan Tier/Pangkat berdasarkan poin
+                let tierBadge = "";
+                if (pemain.rating >= 1200) {
+                    tierBadge = `<span class="tier-badge tier-gm">Grandmaster</span>`;
+                } else if (pemain.rating >= 1100) {
+                    tierBadge = `<span class="tier-badge tier-master">Master</span>`;
+                } else if (pemain.rating > 1000) {
+                    tierBadge = `<span class="tier-badge tier-elite">Elite</span>`;
+                } else {
+                    tierBadge = `<span class="tier-badge tier-novice">Novice</span>`;
+                }
+
+                tbody.innerHTML += `
+                <tr class="${kelasRank}">
+                    <td style="text-align:center;">
+                        <div class="rank-circle">${peringkat}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight:bold; font-size:1.1rem; color:#2c3e50;">
+                            ${pemain.nama} ${ikon}
+                        </div>
+                    </td>
+                    <td>${tierBadge}</td>
+                    <td style="text-align:right;">
+                        <span class="rating-number">${pemain.rating}</span>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        // Fungsi Pencarian (Filter)
+        function cariPemain() {
+            let keyword = document.getElementById("inputCari").value.toLowerCase();
+            
+            // Filter array pemain berdasarkan nama
+            let hasilFilter = masterPemain.filter(p => 
+                p.nama.toLowerCase().includes(keyword)
+            );
+
+            // Tampilkan hasil filter
+            renderRating(hasilFilter);
+        }
+    </script>
+</body>
+</html>

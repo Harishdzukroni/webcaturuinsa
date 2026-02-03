@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UINSA Chess Club - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS TAMBAHAN KHUSUS DASHBOARD (Agar tidak menabrak) */
+       
+        .live-widget {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 40px; /* Jarak aman ke menu bawah */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border-left: 6px solid #e74c3c; /* Aksen Merah Live */
+            position: relative;
+            overflow: hidden;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .live-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .live-blink {
+            background: #e74c3c;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            animation: blinker 1.5s linear infinite;
+        }
+
+        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Membatasi tinggi jadwal di dashboard agar tidak terlalu panjang */
+        #wadahJadwalHome {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px;
+            /* Scrollbar tipis */
+            scrollbar-width: thin;
+        }
+       
+        /* Modifikasi tampilan kartu match versi mini */
+        #wadahJadwalHome .match-card {
+            padding: 10px;
+            font-size: 0.9rem;
+            grid-template-columns: 1fr 80px 1fr; /* Lebih rapat */
+        }
+        #wadahJadwalHome .player-side { font-size: 0.9rem; }
+        #wadahJadwalHome select { display: none; } /* Sembunyikan input skor admin di dashboard */
+       
+        /* Pengganti select menjadi badge skor */
+        .mini-score {
+            font-weight: bold;
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo" class="logo-img">
+            <span class="logo-text">UINSA Chess Club</span>
+        </div>
+       
+        <div style="display:flex; align-items:center;">
+            <span id="userDisplay" class="user-info">Halo, User</span>
+            <button onclick="logout()" class="logout-btn">Keluar</button>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <h1>Dashboard UINSA Chess Club</h1>
+       
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-angka" id="totalAtlet">0</span>
+                <span class="stat-label">Atlet Aktif</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-angka" id="totalTurnamen">0</span>
+                <span class="stat-label">Turnamen Selesai</span>
+            </div>
+        </div>
+
+        <div class="podium-section" id="podiumArea">
+            <p style="color:white; opacity:0.7; margin-top:50px;">Memuat Data Peringkat...</p>
+        </div>
+    </header>
+
+    <div class="container">
+       
+        <div id="panelLive" class="live-widget" style="display: none;">
+            <div class="live-header">
+                <h3 style="margin:0; color:#c0392b; font-size: 1rem;">🔴 SEDANG BERLANGSUNG</h3>
+                <span class="live-blink">LIVE</span>
+            </div>
+           
+            <h2 id="judulLiveHome" style="text-align:center; font-size:1.4rem; margin:10px 0 20px 0; color: #2c3e50;">Nama Turnamen</h2>
+           
+            <div id="wadahJadwalHome"></div>
+
+            <div style="text-align:center; border-top: 1px solid #eee; padding-top: 15px;">
+                <a href="live.html" class="btn-link" style="color:#3498db; text-decoration:none; font-weight:600;">
+                    📺 Buka Layar Penuh / Proyektor >>
+                </a>
+            </div>
+        </div>
+
+        <div class="menu-container">
+            <h3 style="text-align:center; margin-top:0; margin-bottom:30px; text-transform:uppercase; font-size:0.9rem; letter-spacing:1px; color:#7f8c8d;">
+                Akses Cepat Aplikasi
+            </h3>
+           
+            <div class="menu-grid">
+                <a href="turnamen.html" class="menu-item">
+                    <span class="menu-icon">⚔️</span>
+                    <span class="menu-title">Turnamen</span>
+                </a>
+                <a href="pemain.html" class="menu-item">
+                    <span class="menu-icon">👥</span>
+                    <span class="menu-title">Data Pemain</span>
+                </a>
+                <a href="rating.html" class="menu-item">
+                    <span class="menu-icon">👑</span>
+                    <span class="menu-title">Leaderboard</span>
+                </a>
+                <a href="arsip.html" class="menu-item">
+                    <span class="menu-icon">📚</span>
+                    <span class="menu-title">Arsip Riwayat</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align:center; padding:30px; color:#95a5a6; font-size:0.9rem;">
+        <p>&copy; 2026 UKM Catur. Dibuat untuk Prestasi.</p>
+    </footer>
+
+    <script>
+        // 1. Cek Login
+        const ROLE = localStorage.getItem('ukm_role');
+        if (!ROLE) window.location.href = 'login.html';
+       
+        // Tampilkan nama user
+        document.getElementById('userDisplay').innerText = (ROLE === 'admin') ? "Halo, Admin" : "Halo, Penonton";
+
+        function logout() {
+            localStorage.removeItem('ukm_role');
+            window.location.href = 'login.html';
+        }
+
+        // 2. Load Data Dashboard
+        const DB_PEMAIN_KEY = 'ukm_master_pemain';
+        const DB_ARSIP_KEY = 'ukm_arsip_turnamen';
+
+        window.onload = function() {
+            let dataPemain = JSON.parse(localStorage.getItem(DB_PEMAIN_KEY)) || [];
+            let dataArsip = JSON.parse(localStorage.getItem(DB_ARSIP_KEY)) || [];
+
+            // Update Statistik
+            document.getElementById("totalAtlet").innerText = dataPemain.length;
+            document.getElementById("totalTurnamen").innerText = dataArsip.length;
+
+            // --- LOGIKA LIVE WIDGET (PENTING AGAR TIDAK NABRAK) ---
+            const statusAktif = localStorage.getItem('ukm_status_aktif');
+            const panelLive = document.getElementById('panelLive');
+
+            if (statusAktif === 'yes') {
+                // Jika Ada Turnamen Aktif -> TAMPILKAN
+                panelLive.style.display = 'block';
+               
+                // Isi Judul
+                document.getElementById('judulLiveHome').innerText = localStorage.getItem('ukm_judul_turnamen') || "Turnamen";
+               
+                // Isi Jadwal & Bersihkan Tampilan (Hapus Dropdown Admin)
+                let rawHTML = localStorage.getItem('ukm_sesi_jadwal');
+                let skorData = JSON.parse(localStorage.getItem('ukm_sesi_skor')) || [];
+               
+                if(rawHTML) {
+                    let container = document.getElementById('wadahJadwalHome');
+                    container.innerHTML = rawHTML;
+
+                    // Ubah <select> admin menjadi teks biasa agar rapi di dashboard
+                    let selects = container.querySelectorAll('select');
+                    selects.forEach((sel, index) => {
+                        let val = skorData[index] || "vs";
+                        let badge = document.createElement("div");
+                        badge.className = "mini-score";
+                        badge.innerText = (val === "belum") ? "VS" : val;
+                       
+                        // Warna status
+                        if(val !== "belum") {
+                            badge.style.background = "#27ae60";
+                            badge.style.color = "white";
+                        }
+
+                        // Ganti elemen select dengan badge
+                        sel.parentNode.replaceChild(badge, sel);
+                    });
+                }
+            } else {
+                // Jika Tidak Ada Turnamen -> SEMBUNYIKAN TOTAL
+                panelLive.style.display = 'none';
+            }
+            // -----------------------------------------------------
+
+            // Render Podium
+            let podiumHTML = document.getElementById("podiumArea");
+           
+            if (dataPemain.length === 0) {
+                podiumHTML.innerHTML = `<p style="color:white; background:rgba(0,0,0,0.2); padding:10px 20px; border-radius:20px;">Belum ada data pemain.</p>`;
+                return;
+            }
+
+            // Urutkan Rating
+            dataPemain.sort((a, b) => b.rating - a.rating);
+           
+            let juara1 = dataPemain[0] || {nama: '-', rating: '-'};
+            let juara2 = dataPemain[1] || {nama: '-', rating: '-'};
+            let juara3 = dataPemain[2] || {nama: '-', rating: '-'};
+
+            podiumHTML.innerHTML = `
+                <div class="podium-card p-rank-2">
+                    <span class="crown" style="color:#bdc3c7;">🥈</span>
+                    <div class="podium-name">${juara2.nama}</div>
+                    <div class="podium-rating">${juara2.rating}</div>
+                    <div class="rank-number">2</div>
+                </div>
+
+                <div class="podium-card p-rank-1">
+                    <span class="crown" style="color:#f1c40f;">👑</span>
+                    <div class="podium-name">${juara1.nama}</div>
+                    <div class="podium-rating">${juara1.rating}</div>
+                    <div class="rank-number">1</div>
+                </div>
+
+                <div class="podium-card p-rank-3">
+                    <span class="crown" style="color:#e67e22;">🥉</span>
+                    <div class="podium-name">${juara3.nama}</div>
+                    <div class="podium-rating">${juara3.rating}</div>
+                    <div class="rank-number">3</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
