@@ -4,32 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manajemen Turnamen - UKM Catur</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="firebase-init.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* =========================================
-           STYLE KHUSUS: TAMPILAN CHESS MANAGER
-           (Tertanam langsung agar aman)
-           ========================================= */
-
-        /* 1. Container Kartu menjadi Grid 3 Kolom */
+        /* CSS Match Card (Sama seperti sebelumnya) */
         .match-card {
             display: grid;
-            /* Kolom: [Pemain Kiri] [Skor Tengah] [Pemain Kanan] */
             grid-template-columns: 1fr 140px 1fr; 
             gap: 15px;
             align-items: center;
             padding: 15px 20px;
             background: white;
             border-radius: 8px;
-            border-left: 5px solid #bdc3c7; /* Garis default abu-abu */
+            border-left: 5px solid #bdc3c7;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             margin-bottom: 12px;
             transition: border-left-color 0.3s ease;
         }
 
-        /* 2. Styling Nama Pemain */
         .player-side {
             font-weight: 700;
             font-size: 1.05rem;
@@ -41,30 +39,12 @@
             white-space: nowrap;
         }
 
-        .side-left {
-            justify-content: flex-end; /* Rata Kanan */
-            text-align: right;
-        }
-
-        .side-right {
-            justify-content: flex-start; /* Rata Kiri */
-            text-align: left;
-        }
-
-        .p-name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Indikator Warna Bidak */
+        .side-left { justify-content: flex-end; text-align: right; }
+        .side-right { justify-content: flex-start; text-align: left; }
+        .p-name { overflow: hidden; text-overflow: ellipsis; }
         .dot-piece { font-size: 1rem; opacity: 0.9; }
 
-        /* 3. Styling Input Skor di Tengah */
-        .match-center {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        .match-center { display: flex; justify-content: center; align-items: center; }
 
         .hasil-match {
             width: 100%;
@@ -78,14 +58,17 @@
             cursor: pointer;
             font-size: 1rem;
             appearance: none; 
-            -webkit-appearance: none; /* Hilangkan panah default browser */
+            -webkit-appearance: none; 
             transition: 0.2s;
         }
 
         .hasil-match:hover { border-color: #f1c40f; }
         .hasil-match:focus { outline: none; border-color: #27ae60; background: #fff; }
+        
+        /* Style Status Aktif */
+        .match-done { border-left-color: #27ae60 !important; }
+        .select-done { background-color: #27ae60 !important; color: white !important; border-color: #27ae60 !important; }
 
-        /* Style Babak */
         .ronde-header {
             background:#34495e; 
             color:white; 
@@ -100,14 +83,8 @@
             text-align: center;
         }
 
-        /* Responsif HP */
         @media (max-width: 600px) {
-            .match-card {
-                grid-template-columns: 1fr; /* Tumpuk ke bawah */
-                text-align: center;
-                gap: 8px;
-                padding: 15px;
-            }
+            .match-card { grid-template-columns: 1fr; text-align: center; gap: 8px; padding: 15px; }
             .side-left { justify-content: center; text-align: center; flex-direction: column-reverse; gap: 2px;}
             .side-right { justify-content: center; text-align: center; flex-direction: column; gap: 2px; }
             .match-center { width: 100%; margin: 5px 0; }
@@ -117,47 +94,47 @@
 <body>
 
     <nav class="navbar">
-    <div class="logo-container">
-        <img src="logo.png" alt="Logo" class="logo-img"> 
-        <span class="logo-text">UINSA Chess Club</span>
-    </div>
-
-    <ul class="menu">
-        <li><a href="index.html">Beranda</a></li>
-        <li><a href="rating.html">Top Rating</a></li>
-        <li><a href="turnamen.html">Turnamen</a></li>
-        <li><a href="pemain.html">Data Pemain</a></li>
-        <li><a href="arsip.html">Arsip</a></li>
-    </ul>
-</nav>
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo" class="logo-img"> 
+            <span class="logo-text">UINSA Chess Club</span>
+        </div>
+        <ul class="menu">
+            <li><a href="index.html">Beranda</a></li>
+            <li><a href="rating.html">Top Rating</a></li>
+            <li><a href="turnamen.html">Turnamen</a></li>
+            <li><a href="pemain.html">Data Pemain</a></li>
+            <li><a href="arsip.html">Arsip</a></li>
+        </ul>
+    </nav>
 
     <div class="container">
-        <h1>Manajer Turnamen</h1>
+        <h1>Manajer Turnamen (Cloud)</h1>
         
-        <div id="adminControls">
-            <div class="input-group">
-                <input type="text" id="namaPemain" list="saranNama" placeholder="Ketik nama peserta (misal: Magnus)..." autocomplete="off">
-                <datalist id="saranNama"></datalist>
-                <button class="btn-add" onclick="tambahPemain()">+ Tambah</button>
+        <div id="setupPanel" style="display:none;">
+            <div id="adminControls">
+                <div class="input-group">
+                    <input type="text" id="namaPemain" list="saranNama" placeholder="Ketik nama peserta..." autocomplete="off">
+                    <datalist id="saranNama"></datalist>
+                    <button class="btn-add" onclick="tambahPemainKeList()">+ Tambah</button>
+                </div>
+                
+                <h3>Daftar Peserta (<span id="jumlahPeserta">0</span>)</h3>
+                <ul id="listPemain"></ul>
+
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+
+                <div style="margin-bottom: 10px;">
+                    <label style="font-weight:bold; color:var(--primary-color);">Nama Turnamen:</label>
+                    <input type="text" id="judulTurnamen" placeholder="Contoh: Piala Rektor 2026" style="width:100%; margin-top:5px;">
+                </div>
+
+                <button class="btn-generate" onclick="mulaiTurnamen()">⚡ BUAT JADWAL & MULAI</button>
             </div>
             
-            <h3>Daftar Peserta (<span id="jumlahPeserta">0</span>)</h3>
-            <ul id="listPemain"></ul>
-
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
-
-            <div style="margin-bottom: 10px;">
-                <label style="font-weight:bold; color:var(--primary-color);">Nama Turnamen:</label>
-                <input type="text" id="judulTurnamen" placeholder="Contoh: Piala Rektor 2026" style="width:100%; margin-top:5px;">
+            <div id="waitingMessage" style="display:none; text-align:center; padding:30px; background:#eee; border-radius:10px;">
+                <h3>Belum ada turnamen aktif.</h3>
+                <p>Tunggu admin memulai turnamen.</p>
             </div>
-
-            <button class="btn-generate" onclick="buatJadwal()">⚡ BUAT JADWAL & MULAI</button>
-            <hr style="margin: 30px 0;">
-        </div>
-
-        <div id="viewerMessage" style="display:none; text-align:center; padding:20px; background:#f8f9fa; border-radius:10px; margin-bottom:20px; border-left: 5px solid #f1c40f;">
-            <h3>👁️ Mode Penonton</h3>
-            <p>Anda sedang melihat jalannya turnamen sebagai tamu.</p>
         </div>
 
         <div id="areaTurnamen" style="display:none;">
@@ -165,13 +142,11 @@
             
             <div id="wadahJadwal"></div>
 
-            <button id="btnUpdateKlasemen" class="btn-update" onclick="hitungKlasemen()">🏆 UPDATE KLASEMEN SEMENTARA</button>
-
-            <h2>📊 Klasemen Sementara</h2>
+            <h2 style="margin-top:40px;">📊 Klasemen Sementara</h2>
             <table id="tabelKlasemen">
                 <thead>
                     <tr>
-                        <th>Peringkat</th>
+                        <th>#</th>
                         <th>Nama Pemain</th>
                         <th>Poin</th>
                     </tr>
@@ -181,17 +156,17 @@
 
             <hr style="margin-top: 40px;">
 
-            <div id="adminActions">
-                <a href="live.html" target="_blank" style="display:block; text-align:center; background:#8e44ad; color:white; padding:15px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:20px; box-shadow: 0 4px 10px rgba(142, 68, 173, 0.4);">
-                    📢 Buka Layar Penonton / Download Gambar
+            <div id="adminActions" style="display:none;">
+                <a href="live.html" target="_blank" style="display:block; text-align:center; background:#8e44ad; color:white; padding:15px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:20px;">
+                    📢 Buka Layar Proyektor
                 </a>
 
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn-add" style="flex: 2; background: var(--primary-color);" onclick="arsipkanTurnamen()">
+                    <button class="btn-add" style="flex: 2; background: var(--primary-color);" onclick="selesaikanTurnamen()">
                         💾 Selesai, Hitung Rating & Arsip
                     </button>
-                    <button class="btn-danger" style="flex: 1; margin: 0;" onclick="resetPaksa()">
-                        🗑️ Reset
+                    <button class="btn-danger" style="flex: 1; margin: 0;" onclick="resetTurnamen()">
+                        🗑️ Batal
                     </button>
                 </div>
             </div>
@@ -199,310 +174,321 @@
     </div>
 
     <script>
-        // --- KEYS DATABASE ---
-        const DB_PEMAIN_KEY = 'ukm_master_pemain'; 
-        const DB_ARSIP_KEY = 'ukm_arsip_turnamen'; 
-        const SESSION_PESERTA = 'ukm_sesi_peserta';
-        const SESSION_JADWAL = 'ukm_sesi_jadwal';
-        const SESSION_SKOR = 'ukm_sesi_skor';
-        const SESSION_STATUS = 'ukm_status_aktif';
-        const SESSION_JUDUL = 'ukm_judul_turnamen';
-
-        // --- CEK LOGIN ---
+        // --- 1. KONFIGURASI FIREBASE & AUTH ---
         const ROLE = localStorage.getItem('ukm_role');
         if (!ROLE) window.location.href = 'login.html';
 
-        let databasePemain = JSON.parse(localStorage.getItem(DB_PEMAIN_KEY)) || [];
-        let pesertaTurnamen = JSON.parse(localStorage.getItem(SESSION_PESERTA)) || [];
+        const db = firebase.firestore();
+        const liveRef = db.collection('pengaturan').doc('live');
+        const playersRef = db.collection('pemain');
 
-        // --- WINDOW LOAD ---
-        window.onload = function() {
-            if (ROLE !== 'admin') {
-                document.getElementById('adminControls').style.display = 'none';
-                document.getElementById('adminActions').style.display = 'none';
-                document.getElementById('btnUpdateKlasemen').style.display = 'none';
-                document.getElementById('viewerMessage').style.display = 'block';
-            } else {
-                updateSaranNama();
-                renderList();
-            }
+        // Variabel Lokal untuk Setup Awal
+        let draftPeserta = []; 
+        let globalMatches = []; // Menyimpan state match saat ini
+        let mapPemainId = {}; // Menyimpan { "Nama Pemain": "ID_Firestore" } untuk update rating
 
-            if (localStorage.getItem(SESSION_STATUS) === 'yes') {
-                restoreTurnamen();
-            } else if (ROLE !== 'admin') {
-                document.getElementById('viewerMessage').innerHTML += "<p style='color:red; font-weight:bold; margin-top:10px;'>Belum ada turnamen yang dimulai oleh Admin.</p>";
-            }
-        };
-
-        // --- FUNGSI ADMIN: INPUT DATA ---
-        function updateSaranNama() {
-            let datalist = document.getElementById("saranNama");
+        // --- 2. INISIALISASI HALAMAN ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Load Data Pemain untuk Autocomplete
+            const snapshot = await playersRef.get();
+            const datalist = document.getElementById("saranNama");
             datalist.innerHTML = "";
-            let tempDb = [...databasePemain]; 
-            tempDb.sort((a, b) => a.nama.localeCompare(b.nama));
-            tempDb.forEach(item => {
+            
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                // Simpan mapping ID untuk keperluan arsip nanti
+                mapPemainId[data.nama] = doc.id;
+                
                 let option = document.createElement("option");
-                option.value = item.nama; 
-                option.label = `Rating: ${item.rating}`; 
+                option.value = data.nama; 
+                option.label = `Rating: ${data.rating}`; 
                 datalist.appendChild(option);
             });
+
+            // Mulai mendengarkan status Turnamen
+            listenToTournament();
+        });
+
+        // --- 3. LOGIKA REAL-TIME (LISTENER) ---
+        function listenToTournament() {
+            liveRef.onSnapshot((doc) => {
+                const data = doc.data();
+                const setupPanel = document.getElementById('setupPanel');
+                const areaTurnamen = document.getElementById('areaTurnamen');
+                const adminControls = document.getElementById('adminControls');
+                const waitingMsg = document.getElementById('waitingMessage');
+                const adminActions = document.getElementById('adminActions');
+
+                if (doc.exists && data.aktif === true) {
+                    // MODE: TURNAMEN AKTIF
+                    setupPanel.style.display = 'none';
+                    areaTurnamen.style.display = 'block';
+                    
+                    if (ROLE === 'admin') adminActions.style.display = 'block';
+
+                    document.getElementById('displayJudul').innerText = data.nama_turnamen;
+                    globalMatches = data.matches || [];
+                    
+                    renderJadwal(globalMatches);
+                    hitungKlasemen(globalMatches, data.peserta);
+
+                } else {
+                    // MODE: SETUP / MENUNGGU
+                    areaTurnamen.style.display = 'none';
+                    setupPanel.style.display = 'block';
+
+                    if (ROLE === 'admin') {
+                        adminControls.style.display = 'block';
+                        waitingMsg.style.display = 'none';
+                    } else {
+                        adminControls.style.display = 'none';
+                        waitingMsg.style.display = 'block';
+                    }
+                }
+            });
         }
 
-        function tambahPemain() {
+        // --- 4. FUNGSI SETUP (ADMIN) ---
+        function tambahPemainKeList() {
             let input = document.getElementById("namaPemain");
-            let namaRaw = input.value.trim();
-            if (namaRaw === "") return;
-            let nama = namaRaw.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            let nama = input.value.trim().replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 
-            if(pesertaTurnamen.includes(nama)){ alert("Pemain sudah ada!"); return; }
+            if (nama === "") return;
+            if (draftPeserta.includes(nama)) { alert("Pemain sudah masuk list!"); return; }
 
-            pesertaTurnamen.push(nama);
-            localStorage.setItem(SESSION_PESERTA, JSON.stringify(pesertaTurnamen));
-            
-            let dataPemain = databasePemain.find(p => p.nama === nama);
-            if (!dataPemain) {
-                databasePemain.push({ nama: nama, rating: 1000 });
-                localStorage.setItem(DB_PEMAIN_KEY, JSON.stringify(databasePemain));
-                updateSaranNama();
-            }
-            renderList();
-            input.value = ""; input.focus();
+            draftPeserta.push(nama);
+            renderDraftList();
+            input.value = ""; 
         }
 
-        function renderList() {
+        function renderDraftList() {
             let list = document.getElementById("listPemain");
             list.innerHTML = "";
-            pesertaTurnamen.forEach((p, i) => {
-                list.innerHTML += `<li>${p} <span style='color:var(--danger-color); cursor:pointer; margin-left:10px;' onclick='hapusPemain(${i})'>✕</span></li>`;
+            draftPeserta.forEach((p, i) => {
+                list.innerHTML += `<li>${p} <span style='color:red; cursor:pointer; margin-left:10px;' onclick='draftPeserta.splice(${i},1); renderDraftList()'>✕</span></li>`;
             });
-            document.getElementById("jumlahPeserta").innerText = pesertaTurnamen.length;
+            document.getElementById("jumlahPeserta").innerText = draftPeserta.length;
         }
 
-        function hapusPemain(index) {
-            if(localStorage.getItem(SESSION_STATUS) === 'yes'){
-                if(!confirm("Hapus pemain saat turnamen jalan akan merusak jadwal!")) return;
-            }
-            pesertaTurnamen.splice(index, 1);
-            localStorage.setItem(SESSION_PESERTA, JSON.stringify(pesertaTurnamen));
-            renderList();
-        }
+        function mulaiTurnamen() {
+            if (draftPeserta.length < 3) return alert("Minimal 3 pemain!");
+            let judul = document.getElementById("judulTurnamen").value.trim();
+            if (!judul) return alert("Isi nama turnamen!");
 
-        // --- FUNGSI UTAMA: BUAT JADWAL (MODIFIKASI TAMPILAN) ---
-        function buatJadwal() {
-            if (pesertaTurnamen.length < 3) { alert("Minimal 3 pemain!"); return; }
-            let judulInput = document.getElementById("judulTurnamen").value.trim();
-            if (judulInput === "") { alert("Isi Nama Turnamen dulu!"); return; }
-
-            localStorage.setItem(SESSION_JUDUL, judulInput);
-            localStorage.setItem(SESSION_STATUS, 'yes');
-            document.getElementById("displayJudul").innerText = judulInput;
-            document.getElementById("areaTurnamen").style.display = "block";
-            
-            let container = document.getElementById("wadahJadwal");
-            container.innerHTML = "";
-            let tempPeserta = [...pesertaTurnamen];
-            if (tempPeserta.length % 2 !== 0) tempPeserta.push("BYE");
+            // GENERATE JADWAL ROUND ROBIN (JSON)
+            let matches = [];
+            let tempPeserta = [...draftPeserta];
+            if (tempPeserta.length % 2 !== 0) tempPeserta.push("BYE"); // Dummy untuk ganjil
 
             let totalRonde = tempPeserta.length - 1;
             let setengah = tempPeserta.length / 2;
 
             for (let r = 1; r <= totalRonde; r++) {
-                let htmlRonde = `<div class="ronde-header">Babak ${r}</div>`;
-                
                 for (let i = 0; i < setengah; i++) {
                     let p1 = tempPeserta[i];
                     let p2 = tempPeserta[tempPeserta.length - 1 - i];
                     
                     if (p1 !== "BYE" && p2 !== "BYE") {
-                        // --- LAYOUT MIRIP CHESS MANAGER ---
-                        htmlRonde += `
-                        <div class="match-card">
-                            <div class="player-side side-left">
-                                <span class="p-name">${p1}</span> 
-                                <span class="dot-piece" title="Putih">⚪</span>
-                            </div>
+                        matches.push({
+                            ronde: r,
+                            putih: p1,
+                            hitam: p2,
+                            skor: "belum", // Nilai awal
+                            selesai: false
+                        });
+                    }
+                }
+                // Rotasi Array
+                tempPeserta.splice(1, 0, tempPeserta.pop()); 
+            }
 
+            // SIMPAN KE FIRESTORE (Ini akan memicu listener di semua klien)
+            liveRef.set({
+                aktif: true,
+                nama_turnamen: judul,
+                peserta: draftPeserta,
+                matches: matches,
+                tgl_mulai: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                console.log("Turnamen dimulai!");
+            }).catch(err => alert("Gagal memulai: " + err.message));
+        }
+
+        // --- 5. RENDER JADWAL & UPDATE SKOR ---
+        function renderJadwal(matches) {
+            const container = document.getElementById("wadahJadwal");
+            container.innerHTML = "";
+            
+            // Kelompokkan match berdasarkan ronde
+            // Gunakan Set untuk mengetahui total ronde unik
+            let maxRonde = 0;
+            matches.forEach(m => { if(m.ronde > maxRonde) maxRonde = m.ronde });
+
+            for (let r = 1; r <= maxRonde; r++) {
+                let html = `<div class="ronde-header">Babak ${r}</div>`;
+                
+                // Filter match di ronde ini
+                matches.forEach((match, index) => {
+                    if (match.ronde === r) {
+                        let cardClass = match.selesai ? "match-card match-done" : "match-card";
+                        let selectClass = match.selesai ? "hasil-match select-done" : "hasil-match";
+                        
+                        // Disable input jika bukan admin
+                        let disabled = (ROLE !== 'admin') ? "disabled" : "";
+                        let displayValue = (match.skor === "belum") ? "vs" : match.skor;
+
+                        html += `
+                        <div class="${cardClass}">
+                            <div class="player-side side-left">
+                                <span class="p-name">${match.putih}</span> <span class="dot-piece">⚪</span>
+                            </div>
                             <div class="match-center">
-                                <select class="hasil-match" data-white="${p1}" data-black="${p2}" onchange="simpanSkorOtomatis(this)">
-                                    <option value="belum" style="color:#aaa;">vs</option>
-                                    <option value="1-0">1 - 0</option>
-                                    <option value="0-1">0 - 1</option>
-                                    <option value="0.5-0.5">½ - ½</option>
+                                <select class="${selectClass}" onchange="updateSkor(${index}, this.value)" ${disabled}>
+                                    <option value="belum" ${match.skor === 'belum' ? 'selected' : ''}>VS</option>
+                                    <option value="1-0" ${match.skor === '1-0' ? 'selected' : ''}>1 - 0</option>
+                                    <option value="0-1" ${match.skor === '0-1' ? 'selected' : ''}>0 - 1</option>
+                                    <option value="0.5-0.5" ${match.skor === '0.5-0.5' ? 'selected' : ''}>½ - ½</option>
                                 </select>
                             </div>
-
                             <div class="player-side side-right">
-                                <span class="dot-piece" title="Hitam">⚫</span>
-                                <span class="p-name">${p2}</span>
+                                <span class="dot-piece">⚫</span> <span class="p-name">${match.hitam}</span>
                             </div>
                         </div>`;
                     }
-                }
-                container.innerHTML += htmlRonde;
-                tempPeserta.splice(1, 0, tempPeserta.pop()); 
+                });
+                container.innerHTML += html;
             }
-            localStorage.setItem(SESSION_JADWAL, container.innerHTML);
-            hitungKlasemen();
         }
 
-        // --- MANAGEMEN SKOR (UPDATE WARNA & SAVE) ---
-        function simpanSkorOtomatis(el) {
-            if (ROLE !== 'admin') return; 
+        // FUNGSI UPDATE SKOR (REALTIME)
+        function updateSkor(index, nilaiBaru) {
+            if (ROLE !== 'admin') return;
 
-            // Efek UI: Ganti warna border kiri jika sudah diisi
-            if(el) {
-                let card = el.closest('.match-card');
-                if(el.value !== 'belum') {
-                    card.style.borderLeftColor = '#27ae60'; // Hijau
-                    el.style.fontWeight = '900';
-                    el.style.color = '#2c3e50';
-                } else {
-                    card.style.borderLeftColor = '#bdc3c7'; // Abu
-                    el.style.fontWeight = 'normal';
-                }
-            }
+            // Update array lokal
+            globalMatches[index].skor = nilaiBaru;
+            globalMatches[index].selesai = (nilaiBaru !== 'belum');
 
-            let semuaSelect = document.querySelectorAll('.hasil-match');
-            let dataSkor = [];
-            semuaSelect.forEach(sel => dataSkor.push(sel.value));
-            localStorage.setItem(SESSION_SKOR, JSON.stringify(dataSkor));
-            hitungKlasemen();
+            // Kirim update ke Firestore (Hanya update field matches)
+            liveRef.update({
+                matches: globalMatches
+            }).catch(err => alert("Gagal update skor: " + err.message));
         }
 
-        function restoreTurnamen() {
-            document.getElementById("areaTurnamen").style.display = "block";
-            
-            let judulSimpan = localStorage.getItem(SESSION_JUDUL) || "Turnamen Tanpa Nama";
-            document.getElementById("displayJudul").innerText = judulSimpan;
-            document.getElementById("judulTurnamen").value = judulSimpan;
+        // --- 6. KLASEMEN ---
+        function hitungKlasemen(matches, listPeserta) {
+            let skor = {};
+            if(!listPeserta) return;
+            listPeserta.forEach(p => skor[p] = 0);
 
-            let htmlDisimpan = localStorage.getItem(SESSION_JADWAL);
-            if(htmlDisimpan) document.getElementById("wadahJadwal").innerHTML = htmlDisimpan;
+            matches.forEach(m => {
+                if (m.selesai) {
+                    if (m.skor === "1-0") skor[m.putih] += 1;
+                    else if (m.skor === "0-1") skor[m.hitam] += 1;
+                    else if (m.skor === "0.5-0.5") { skor[m.putih] += 0.5; skor[m.hitam] += 0.5; }
+                }
+            });
 
-            let skorDisimpan = JSON.parse(localStorage.getItem(SESSION_SKOR)) || [];
-            let semuaSelect = document.querySelectorAll('.hasil-match');
-            
-            semuaSelect.forEach((sel, index) => {
-                if(skorDisimpan[index]) {
-                    sel.value = skorDisimpan[index];
-                    // Update tampilan warna saat restore
-                    if(sel.value !== 'belum') {
-                        let card = sel.closest('.match-card');
-                        if(card) card.style.borderLeftColor = '#27ae60';
-                        sel.style.fontWeight = '900';
+            let urutan = Object.keys(skor).map(key => ({ nama: key, poin: skor[key] }));
+            urutan.sort((a, b) => b.poin - a.poin);
+
+            let tbody = document.getElementById("isiKlasemen");
+            tbody.innerHTML = "";
+            urutan.forEach((d, i) => {
+                let medali = (i===0 && d.poin > 0) ? "👑" : "";
+                tbody.innerHTML += `<tr><td>${i+1} ${medali}</td><td>${d.nama}</td><td>${d.poin}</td></tr>`;
+            });
+
+            return urutan; // Return data untuk arsip
+        }
+
+        // --- 7. ARSIP & SELESAI (DATABASE TRANSACTION) ---
+        async function selesaikanTurnamen() {
+            if (!confirm("Selesaikan turnamen? Rating akan dihitung permanen.")) return;
+
+            try {
+                // Ambil data terbaru dulu untuk memastikan rating akurat
+                const liveDoc = await liveRef.get();
+                const liveData = liveDoc.data();
+                const playersSnapshot = await playersRef.get();
+                
+                // Siapkan data pemain lokal untuk hitung ELO
+                let dbPemain = [];
+                playersSnapshot.forEach(doc => {
+                    dbPemain.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Batch Writer (Agar semua tersimpan atau gagal sama sekali)
+                const batch = db.batch();
+
+                // 1. Hitung Rating ELO
+                let ratingChanges = {}; // Log perubahan
+                
+                liveData.matches.forEach(match => {
+                    if (!match.selesai) return;
+
+                    let p1 = dbPemain.find(p => p.nama === match.putih);
+                    let p2 = dbPemain.find(p => p.nama === match.hitam);
+
+                    if (p1 && p2) {
+                        let score1 = (match.skor === "1-0") ? 1 : (match.skor === "0.5-0.5" ? 0.5 : 0);
+                        let k = 32; 
+                        
+                        let expected1 = 1 / (1 + Math.pow(10, (p2.rating - p1.rating) / 400));
+                        let change1 = Math.round(k * (score1 - expected1));
+                        
+                        // Terapkan perubahan ke objek lokal (untuk perhitungan match selanjutnya jika ada, tapi round robin rating dihitung di akhir biasanya aman)
+                        // Namun ELO standar dihitung per game. Kita update objek lokal.
+                        p1.rating += change1;
+                        p2.rating += (change1 * -1); // Zero sum game approximation for simple Elo
+                        
+                        // Catat untuk Batch Update
+                        // Note: Ini simplifikasi. Jika 1 pemain main berkali-kali, kita harus akumulasi delta-nya dulu.
+                        if(!ratingChanges[p1.id]) ratingChanges[p1.id] = 0;
+                        if(!ratingChanges[p2.id]) ratingChanges[p2.id] = 0;
+                        
+                        ratingChanges[p1.id] += change1;
+                        ratingChanges[p2.id] -= change1;
+                    }
+                });
+
+                // 2. Masukkan Update Pemain ke Batch
+                for (let [playerId, change] of Object.entries(ratingChanges)) {
+                    if (change !== 0) {
+                        let ref = playersRef.doc(playerId);
+                        batch.update(ref, { rating: firebase.firestore.FieldValue.increment(change) });
                     }
                 }
-                
-                if (ROLE !== 'admin') {
-                    sel.disabled = true; 
-                    sel.style.backgroundColor = "#eee";
-                    sel.style.border = "none";
-                }
-            });
-            hitungKlasemen();
-        }
 
-        function hitungKlasemen() {
-            let skor = {};
-            pesertaTurnamen.forEach(nama => skor[nama] = 0);
-            let semuaMatch = document.querySelectorAll('.hasil-match');
-            semuaMatch.forEach(match => {
-                let pPutih = match.getAttribute('data-white');
-                let pHitam = match.getAttribute('data-black');
-                let hasil = match.value;
-                if (hasil === "1-0") skor[pPutih] += 1;
-                else if (hasil === "0-1") skor[pHitam] += 1;
-                else if (hasil === "0.5-0.5") { skor[pPutih] += 0.5; skor[pHitam] += 0.5; }
-            });
-            let urutanKlasemen = Object.keys(skor).map(nama => { return { nama: nama, poin: skor[nama] }; });
-            urutanKlasemen.sort((a, b) => b.poin - a.poin);
+                // 3. Simpan ke Arsip
+                let klasemenAkhir = hitungKlasemen(liveData.matches, liveData.peserta);
+                let arsipRef = db.collection('riwayat_turnamen').doc();
+                batch.set(arsipRef, {
+                    nama_turnamen: liveData.nama_turnamen,
+                    tanggal: firebase.firestore.Timestamp.now(),
+                    jumlah_peserta: liveData.peserta.length,
+                    detail_klasemen: klasemenAkhir,
+                    matches: liveData.matches
+                });
 
-            let tabelBody = document.getElementById("isiKlasemen");
-            tabelBody.innerHTML = "";
-            urutanKlasemen.forEach((data, index) => {
-                let kelasWarna = (index === 0 && data.poin > 0) ? "class='peringkat-1'" : "";
-                let medali = (index === 0 && data.poin > 0) ? "👑" : "";
-                tabelBody.innerHTML += `<tr ${kelasWarna}><td>${index + 1} ${medali}</td><td>${data.nama}</td><td>${data.poin}</td></tr>`;
-            });
-            return urutanKlasemen; 
-        }
+                // 4. Reset Turnamen Aktif
+                batch.update(liveRef, { aktif: false, matches: [], peserta: [] });
 
-        // --- ELO RATING SYSTEM ---
-        function hitungRatingElo(ratingA, ratingB, skorSebenarnya) {
-            const K = 32; 
-            let expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
-            return Math.round(K * (skorSebenarnya - expectedA));
-        }
+                // JALANKAN BATCH
+                await batch.commit();
 
-        // --- ARSIP & RESET (ADMIN ONLY) ---
-        function arsipkanTurnamen() {
-            if(!confirm("Turnamen Selesai? Rating akan diupdate dan disimpan.")) return;
+                alert("Turnamen Berhasil Diarsipkan!");
+                window.location.href = "arsip.html";
 
-            let ratingTracker = {}; 
-            pesertaTurnamen.forEach(nama => ratingTracker[nama] = 0);
-
-            let semuaMatch = document.querySelectorAll('.hasil-match');
-            let dbUpdate = [...databasePemain]; 
-
-            semuaMatch.forEach(match => {
-                let p1Name = match.getAttribute('data-white');
-                let p2Name = match.getAttribute('data-black');
-                let hasil = match.value;
-                if (hasil === 'belum') return;
-
-                let p1 = dbUpdate.find(p => p.nama === p1Name);
-                let p2 = dbUpdate.find(p => p.nama === p2Name);
-
-                if (p1 && p2) {
-                    let s1 = (hasil === "1-0") ? 1 : (hasil === "0.5-0.5" ? 0.5 : 0);
-                    let u1 = hitungRatingElo(p1.rating, p2.rating, s1);
-                    let u2 = hitungRatingElo(p2.rating, p1.rating, 1 - s1);
-
-                    p1.rating += u1; p2.rating += u2;
-                    ratingTracker[p1Name] += u1; ratingTracker[p2Name] += u2;
-                }
-            });
-
-            localStorage.setItem(DB_PEMAIN_KEY, JSON.stringify(dbUpdate));
-
-            let hasilAkhir = hitungKlasemen();
-            hasilAkhir.forEach(pemain => {
-                let dMaster = dbUpdate.find(p => p.nama === pemain.nama);
-                pemain.rating_sekarang = dMaster ? dMaster.rating : 1000;
-                pemain.rating_ubah = ratingTracker[pemain.nama] || 0;
-            });
-
-            let dataArsipBaru = {
-                id: Date.now(),
-                nama_turnamen: localStorage.getItem(SESSION_JUDUL) || "Turnamen Tanpa Nama",
-                tanggal: new Date().toLocaleDateString('id-ID'),
-                jam: new Date().toLocaleTimeString('id-ID'),
-                jumlah_peserta: pesertaTurnamen.length,
-                detail_klasemen: hasilAkhir 
-            };
-
-            let databaseArsip = JSON.parse(localStorage.getItem(DB_ARSIP_KEY)) || [];
-            databaseArsip.unshift(dataArsipBaru);
-            localStorage.setItem(DB_ARSIP_KEY, JSON.stringify(databaseArsip));
-
-            bersihkanSesi();
-            alert("Berhasil Diarsipkan!");
-            window.location.href = "arsip.html";
-        }
-
-        function resetPaksa() {
-            if(confirm("Hapus data turnamen ini?")) {
-                bersihkanSesi();
-                location.reload();
+            } catch (error) {
+                console.error(error);
+                alert("Terjadi kesalahan: " + error.message);
             }
         }
 
-        function bersihkanSesi() {
-            localStorage.removeItem(SESSION_PESERTA);
-            localStorage.removeItem(SESSION_JADWAL);
-            localStorage.removeItem(SESSION_SKOR);
-            localStorage.removeItem(SESSION_STATUS);
-            localStorage.removeItem(SESSION_JUDUL);
+        function resetTurnamen() {
+            if (confirm("Yakin batalkan turnamen? Semua data skor akan hilang.")) {
+                liveRef.update({ aktif: false, matches: [], peserta: [] });
+            }
         }
     </script>
 </body>
