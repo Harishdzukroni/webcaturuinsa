@@ -4,20 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Klasemen Rating ELO - UKM Catur</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="firebase-init.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    
     <style>
         /* Tampilan Khusus Halaman Rating */
-        .header-rating {
-            text-align: center; margin-bottom: 40px;
-        }
+        .header-rating { text-align: center; margin-bottom: 40px; }
         .header-rating h1 { margin-bottom: 5px; color: var(--primary-color); }
         .header-rating p { color: #7f8c8d; }
 
         /* Kotak Pencarian */
-        .search-box {
-            position: relative; max-width: 400px; margin: 0 auto 30px auto;
-        }
+        .search-box { position: relative; max-width: 400px; margin: 0 auto 30px auto; }
         .search-box input {
             width: 100%; padding: 15px 20px; border-radius: 30px;
             border: 2px solid #ddd; outline: none; transition: all 0.3s;
@@ -25,10 +27,8 @@
         }
         .search-box input:focus { border-color: var(--accent-color); box-shadow: 0 0 10px rgba(52, 152, 219, 0.2); }
 
-        /* Tabel Rating Keren */
-        .rating-table {
-            width: 100%; border-collapse: separate; border-spacing: 0 10px;
-        }
+        /* Tabel Rating */
+        .rating-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
         .rating-table thead th {
             border: none; color: #95a5a6; font-weight: 600; text-transform: uppercase;
             font-size: 0.85rem; padding: 10px 20px;
@@ -40,7 +40,6 @@
         .rating-table tbody tr:hover { transform: scale(1.01); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .rating-table td { padding: 20px; vertical-align: middle; }
         
-        /* Sudut membulat untuk baris */
         .rating-table td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
         .rating-table td:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
 
@@ -56,44 +55,40 @@
         .rank-2 .rank-circle { background: #95a5a6; color: white; } /* Perak */
         .rank-3 .rank-circle { background: #cd6133; color: white; } /* Perunggu */
 
-        /* Badge Tier (Pangkat) */
+        /* Badge Tier */
         .tier-badge {
             font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; 
             text-transform: uppercase; font-weight: bold; letter-spacing: 1px;
         }
-        .tier-gm { background: #8e44ad; color: white; } /* Grandmaster (>1200) */
-        .tier-master { background: #e74c3c; color: white; } /* Master (>1100) */
-        .tier-elite { background: #3498db; color: white; } /* Elite (>1000) */
-        .tier-novice { background: #bdc3c7; color: white; } /* Novice (<=1000) */
+        .tier-gm { background: #8e44ad; color: white; } 
+        .tier-master { background: #e74c3c; color: white; } 
+        .tier-elite { background: #3498db; color: white; } 
+        .tier-novice { background: #bdc3c7; color: white; } 
 
-        /* Angka Rating Besar */
-        .rating-number {
-            font-size: 1.2rem; font-weight: bold; color: var(--primary-color);
-        }
+        .rating-number { font-size: 1.2rem; font-weight: bold; color: var(--primary-color); }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
-    <div class="logo-container">
-        <img src="logo.png" alt="Logo" class="logo-img"> 
-        <span class="logo-text">UINSA Chess Club</span>
-    </div>
-
-    <ul class="menu">
-        <li><a href="index.html">Beranda</a></li>
-        <li><a href="rating.html">Top Rating</a></li>
-        <li><a href="turnamen.html">Turnamen</a></li>
-        <li><a href="pemain.html">Data Pemain</a></li>
-        <li><a href="arsip.html">Arsip</a></li>
-    </ul>
-</nav>
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo" class="logo-img"> 
+            <span class="logo-text">UINSA Chess Club</span>
+        </div>
+        <ul class="menu">
+            <li><a href="index.html">Beranda</a></li>
+            <li><a href="rating.html">Top Rating</a></li>
+            <li><a href="turnamen.html">Turnamen</a></li>
+            <li><a href="pemain.html">Data Pemain</a></li>
+            <li><a href="arsip.html">Arsip</a></li>
+        </ul>
+    </nav>
 
     <div class="container">
         
         <div class="header-rating">
             <h1>🏆 Leaderboard UKM</h1>
-            <p>Peringkat resmi berdasarkan sistem ELO Rating</p>
+            <p>Peringkat resmi berdasarkan sistem ELO Rating (Cloud Database)</p>
         </div>
 
         <div class="search-box">
@@ -110,25 +105,44 @@
                 </tr>
             </thead>
             <tbody id="tabelRating">
-                </tbody>
+                <tr><td colspan="4" style="text-align:center; padding:30px;">Memuat data...</td></tr>
+            </tbody>
         </table>
 
         <p id="pesanKosong" style="text-align:center; color:#999; display:none; margin-top:30px;">
-            Belum ada data pemain. Silakan tambah di menu 'Data Pemain'.
+            Tidak ditemukan pemain dengan nama tersebut.
         </p>
 
     </div>
 
     <script>
-        // Kunci Database yang SAMA dengan halaman lainnya
-        const DB_PEMAIN_KEY = 'ukm_master_pemain'; 
+        // 1. Inisialisasi Firestore
+        const db = firebase.firestore();
         
-        // Ambil data
-        let masterPemain = JSON.parse(localStorage.getItem(DB_PEMAIN_KEY)) || [];
+        // Variabel Global untuk menyimpan data agar pencarian cepat (Client-side filtering)
+        let globalPemainData = []; 
 
-        window.onload = function() {
-            renderRating(masterPemain);
-        };
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRatingData();
+        });
+
+        function loadRatingData() {
+            // Ambil data real-time, urutkan berdasarkan rating tertinggi
+            db.collection('pemain').orderBy('rating', 'desc').onSnapshot((snapshot) => {
+                globalPemainData = []; // Reset array
+                
+                snapshot.forEach((doc) => {
+                    globalPemainData.push(doc.data());
+                });
+
+                // Render pertama kali
+                renderRating(globalPemainData);
+
+            }, (error) => {
+                console.error("Error loading rating:", error);
+                document.getElementById("tabelRating").innerHTML = `<tr><td colspan="4" style="text-align:center;">Gagal memuat data.</td></tr>`;
+            });
+        }
 
         // Fungsi Menampilkan Tabel
         function renderRating(data) {
@@ -139,14 +153,13 @@
 
             if (data.length === 0) {
                 pesan.style.display = "block";
+                if(globalPemainData.length === 0) pesan.innerText = "Belum ada data pemain di database.";
                 return;
             } else {
                 pesan.style.display = "none";
             }
 
-            // Urutkan dari Rating TERTINGGI ke TERENDAH
-            data.sort((a, b) => b.rating - a.rating);
-
+            // Loop data
             data.forEach((pemain, index) => {
                 let peringkat = index + 1;
                 let kelasRank = "";
@@ -187,16 +200,16 @@
             });
         }
 
-        // Fungsi Pencarian (Filter)
+        // Fungsi Pencarian (Filter Lokal)
         function cariPemain() {
             let keyword = document.getElementById("inputCari").value.toLowerCase();
             
-            // Filter array pemain berdasarkan nama
-            let hasilFilter = masterPemain.filter(p => 
+            // Filter array global yang sudah diambil dari Firebase
+            let hasilFilter = globalPemainData.filter(p => 
                 p.nama.toLowerCase().includes(keyword)
             );
 
-            // Tampilkan hasil filter
+            // Render ulang tabel dengan hasil filter
             renderRating(hasilFilter);
         }
     </script>
