@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Pemain</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="firebase-init.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    
     <style>
         .rating-badge { background: #2c3e50; color: white; padding: 5px 10px; border-radius: 15px; font-weight: bold; font-size: 0.9rem; }
         .top-player { background-color: #fff9c4 !important; border-left: 5px solid #f1c40f; }
@@ -35,9 +41,9 @@
 
     <div class="container">
         <h1>👥 Database Anggota</h1>
-        <p style="text-align:center; color:#666;">Data atlet dan rating resmi.</p>
+        <p style="text-align:center; color:#666;">Data atlet dan rating resmi (Sinkronisasi Cloud).</p>
 
-        <div id="adminPanel" class="form-box">
+        <div id="adminPanel" class="form-box" style="display: none;">
             <div class="form-group">
                 <label>Nama Lengkap</label>
                 <input type="text" id="inputNama" placeholder="Nama baru...">
@@ -58,66 +64,113 @@
                     <th>Aksi</th>
                 </tr>
             </thead>
-            <tbody id="tabelPemain"></tbody>
+            <tbody id="tabelPemain">
+                <tr><td colspan="4" style="padding:20px; text-align:center;">Memuat data...</td></tr>
+            </tbody>
         </table>
     </div>
 
     <script>
-        const MASTER_KEY = 'ukm_master_pemain';
+        // --- 1. Konfigurasi & Cek Akses ---
         const ROLE = localStorage.getItem('ukm_role');
+        
+        // Proteksi Halaman (Opsional, redirect jika tidak ada akses sama sekali)
         if (!ROLE) window.location.href = 'login.html';
 
-        // --- PROTEKSI HALAMAN ---
-        // Jika Tamu, Sembunyikan Form Input
-        if (ROLE !== 'admin') {
-            document.getElementById('adminPanel').style.display = 'none';
+        // Tampilkan panel admin hanya jika role = admin
+        if (ROLE === 'admin') {
+            document.getElementById('adminPanel').style.display = 'flex';
         }
 
-        let masterPemain = JSON.parse(localStorage.getItem(MASTER_KEY)) || [];
+        // Inisialisasi Firestore
+        const db = firebase.firestore();
+        const playersRef = db.collection('pemain');
 
-        window.onload = function() { renderTabel(); };
+        // --- 2. Real-time Listener (READ) ---
+        // Kode ini akan berjalan otomatis setiap ada perubahan data di server
+        playersRef.orderBy('rating', 'desc').onSnapshot((snapshot) => {
+            let dataPemain = [];
+            snapshot.forEach((doc) => {
+                // Kita gabungkan data dengan ID dokumen agar bisa dihapus nanti
+                dataPemain.push({ id: doc.id, ...doc.data() });
+            });
+            renderTabel(dataPemain);
+        }, (error) => {
+            console.error("Error mengambil data:", error);
+            document.getElementById("tabelPemain").innerHTML = `<tr><td colspan='4'>Gagal memuat data. Periksa koneksi internet.</td></tr>`;
+        });
 
-        function tambahPemainBaru() {
-            let nama = document.getElementById("inputNama").value.trim();
-            nama = nama.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+        // --- 3. Fungsi Tambah Pemain (CREATE) ---
+        async function tambahPemainBaru() {
+            let namaInput = document.getElementById("inputNama").value.trim();
+            // Format Title Case
+            let namaBersih = namaInput.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
             let rating = parseInt(document.getElementById("inputRating").value);
 
-            if (nama === "" || isNaN(rating)) return alert("Data tidak lengkap!");
-            if (masterPemain.find(p => p.nama === nama)) return alert("Nama sudah ada!");
+            if (namaBersih === "" || isNaN(rating)) return alert("Data tidak lengkap!");
 
-            masterPemain.push({ nama: nama, rating: rating });
-            simpanDanRender();
-            document.getElementById("inputNama").value = "";
-        }
+            try {
+                // Cek Duplikat di Firestore
+                const cekDuplikat = await playersRef.where('nama', '==', namaBersih).get();
+                
+                if (!cekDuplikat.empty) {
+                    alert("Nama pemain sudah ada di database!");
+                    return;
+                }
 
-        function hapusPemain(index) {
-            if (ROLE !== 'admin') return alert("Hanya Admin yang boleh menghapus!");
-            if(confirm("Yakin hapus pemain ini?")) {
-                masterPemain.splice(index, 1);
-                simpanDanRender();
+                // Simpan ke Firestore
+                await playersRef.add({
+                    nama: namaBersih,
+                    rating: rating
+                });
+
+                // Reset Form
+                document.getElementById("inputNama").value = "";
+                alert("Berhasil menambahkan " + namaBersih);
+
+            } catch (error) {
+                console.error("Error menambah:", error);
+                alert("Gagal menyimpan data.");
             }
         }
 
-        function simpanDanRender() {
-            masterPemain.sort((a, b) => b.rating - a.rating);
-            localStorage.setItem(MASTER_KEY, JSON.stringify(masterPemain));
-            renderTabel();
+        // --- 4. Fungsi Hapus Pemain (DELETE) ---
+        function hapusPemain(docId, namaPemain) {
+            if (ROLE !== 'admin') return alert("Akses ditolak!");
+            
+            if(confirm(`Yakin ingin menghapus data atlet "${namaPemain}"? Data tidak bisa dikembalikan.`)) {
+                playersRef.doc(docId).delete().then(() => {
+                    console.log("Data terhapus");
+                    // Tidak perlu panggil renderTabel, karena onSnapshot akan otomatis mendeteksi
+                }).catch((error) => {
+                    alert("Gagal menghapus: " + error.message);
+                });
+            }
         }
 
-        function renderTabel() {
+        // --- 5. Render Tabel ---
+        function renderTabel(listPemain) {
             let tbody = document.getElementById("tabelPemain");
             tbody.innerHTML = "";
-            if (masterPemain.length === 0) { tbody.innerHTML = "<tr><td colspan='4' style='padding:20px; color:#999;'>Belum ada data.</td></tr>"; return; }
 
-            masterPemain.forEach((pemain, index) => {
-                let medali = ""; let kelas = "";
+            if (listPemain.length === 0) { 
+                tbody.innerHTML = "<tr><td colspan='4' style='padding:20px; color:#999;'>Belum ada data pemain di database.</td></tr>"; 
+                return; 
+            }
+
+            listPemain.forEach((pemain, index) => {
+                let medali = ""; 
+                let kelas = "";
+                
+                // Logika Peringkat
                 if(index === 0) { medali = "🥇"; kelas="top-player"; }
                 else if(index === 1) medali = "🥈";
                 else if(index === 2) medali = "🥉";
 
-                // Tombol Hapus hanya muncul kalau Admin
+                // Tombol Hapus (Hanya admin)
+                // Kita kirim ID Dokumen ke fungsi hapus
                 let tombolHapus = (ROLE === 'admin') 
-                    ? `<button class="btn-sm-delete" onclick="hapusPemain(${index})">Hapus</button>` 
+                    ? `<button class="btn-sm-delete" onclick="hapusPemain('${pemain.id}', '${pemain.nama}')">Hapus</button>` 
                     : `<span style="color:#ccc; font-size:0.8rem;">-</span>`;
 
                 tbody.innerHTML += `
